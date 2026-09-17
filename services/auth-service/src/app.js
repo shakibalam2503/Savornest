@@ -7,7 +7,10 @@ const pinoHttp = require("pino-http");
 const logger = require("../src/config/logger")
 const notFound = require("./middlewares/notFound");
 const errorHandler = require("./middlewares/errorHandler");
+
+
 const healthRoutes = require("./routes/health.route");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 
@@ -26,7 +29,9 @@ app.use(cookieParser()); // Cookies
 // HTTP request logging
 app.use(pinoHttp({logger,}));
 
+
 app.use(healthRoutes)
+app.use("/api/auth", authRoutes);
 
 app.use(notFound); // 404 handler
 app.use(errorHandler); // Global error handler
