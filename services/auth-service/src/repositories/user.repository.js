@@ -91,9 +91,33 @@ const verifyUserEmail = async (userId) => {
 
   return result.rows[0] || null;
 };
+const updateUserPassword = async (userId, passwordHash) => {
+  const query = `
+    UPDATE users
+    SET
+      password_hash = $1,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $2
+    RETURNING
+      id,
+      email,
+      role,
+      status,
+      email_verified_at,
+      updated_at
+  `;
+
+  const result = await pool.query(query, [
+    passwordHash,
+    userId,
+  ]);
+
+  return result.rows[0] || null;
+};
 module.exports = {
   findUserByEmail,
   createUser,
   findUserById,
-  verifyUserEmail
+  verifyUserEmail,
+  updateUserPassword
 };
