@@ -5,6 +5,7 @@ const validate = require("../middlewares/validate");
 const { registerSchema,loginSchema,forgotPasswordSchema,resetPasswordSchema} = require("../validators/auth.validator");
 const authenticate = require("../middlewares/auth.middleware");
 const {loginRateLimiter,} = require("../middlewares/rateLimit");
+const authorize = require("../middlewares/authorize");
 
 const router = express.Router();
 
