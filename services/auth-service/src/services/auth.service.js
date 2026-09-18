@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const {randomUUID}=require("crypto")
-const {createSession,getSession}=require("./session.service")
+const {createSession,getSession,deleteSession}=require("./session.service")
 const {generateAccessToken,generateRefreshToken,verifyAccessToken,verifyRefreshToken}=require("./token.service")
 const {
   findUserByEmail,
@@ -149,8 +149,20 @@ async function refreshAccessToken(refreshToken) {
     accessToken,
   };
 };
+async function logout (sessionId) {
+  if (!sessionId) {
+    throw new AppError(
+      "Session ID is required",
+      401,
+      "SESSION_ID_REQUIRED"
+    );
+  }
+
+  await deleteSession(sessionId);
+};
 module.exports = {
   register,
   login,
-  refreshAccessToken
+  refreshAccessToken,
+  logout
 };

@@ -82,6 +82,30 @@ async function refresh(req, res, next) {
     next(error);
   }
 };
+async function logout(req, res, next){
+  try {
+    await authService.logout(req.user.sessionId);
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports={
-    register,login,me,refresh
+    register,login,logout,me,refresh
 }
