@@ -1,13 +1,15 @@
 const bcrypt = require("bcryptjs");
 const {randomUUID}=require("crypto")
-const {createSession,getSession,deleteSession}=require("./session.service")
+const {createSession,getSession,deleteSession,deleteAllUserSessions}=require("./session.service")
 const {generateAccessToken,generateRefreshToken,verifyAccessToken,verifyRefreshToken}=require("./token.service")
 const {createVerificationToken,getUserIdByVerificationToken,deleteVerificationToken} = require("./verification.service");
+const {createPasswordResetToken,getUserIdByPasswordResetToken,deletePasswordResetToken} = require("./password-reset.service");
 const {
   findUserByEmail,
   createUser,
   findUserById,
-  verifyUserEmail
+  verifyUserEmail,
+  updateUserPassword
 
 } = require("../repositories/user.repository");
 
@@ -201,10 +203,92 @@ async function verifyEmail(token){
     emailVerifiedAt: user.email_verified_at,
   };
 };
+const requestPasswordReset = async (email) => {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const user = await findUserByEmail(normalizedEmail);
+
+  if (!user) {
+    return null;
+  }
+
+  const resetToken = await createPasswordResetToken(user.id);
+
+  return {
+    resetToken,
+  };
+};
+const resetPassword = async (token, newPassword) => {
+  if (!token) {
+    throw new AppError(
+      "Reset token is required",
+      400,
+      "RESET_TOKEN_REQUIRED"
+    );
+  }
+
+  const userId =
+    await getUserIdByPasswordResetToken(token);
+
+  if (!userId) {
+    throw new AppError(
+      "Invalid or expired password reset token",
+      400,
+      "INVALID_RESET_TOKEN"
+    );
+  }
+
+  const user = await findUserById(userId);
+
+  if (!user) {
+    throw new AppError(
+      "User account no longer exists",
+      400,
+      "USER_NOT_FOUND"
+    );
+  }
+
+  if (user.status !== "ACTIVE") {
+    throw new AppError(
+      "User account is not active",
+      400,
+      "ACCOUNT_NOT_ACTIVE"
+    );
+  }
+
+  const passwordHash = await bcrypt.hash(
+    newPassword,
+    12
+  );
+
+  const updatedUser = await updateUserPassword(
+    userId,
+    passwordHash
+  );
+
+  if (!updatedUser) {
+    throw new AppError(
+      "Failed to update password",
+      500,
+      "PASSWORD_UPDATE_FAILED"
+    );
+  }
+
+  await deletePasswordResetToken(token);
+  await deleteAllUserSessions(userId);
+
+  return {
+    id: updatedUser.id,
+    email: updatedUser.email,
+    passwordChangedAt: updatedUser.updated_at,
+  };
+};
 module.exports = {
   register,
   login,
   refreshAccessToken,
   logout,
-  verifyEmail
+  verifyEmail,
+  requestPasswordReset,
+  resetPassword
 };
