@@ -106,6 +106,23 @@ async function logout(req, res, next){
     next(error);
   }
 };
+async function verifyEmail(req, res, next) {
+  try {
+    const result = await authService.verifyEmail(
+      req.query.token
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      data: {
+        user: result,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 module.exports={
-    register,login,logout,me,refresh
+    register,login,logout,me,refresh,verifyEmail
 }

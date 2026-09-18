@@ -2,10 +2,13 @@ const bcrypt = require("bcryptjs");
 const {randomUUID}=require("crypto")
 const {createSession,getSession,deleteSession}=require("./session.service")
 const {generateAccessToken,generateRefreshToken,verifyAccessToken,verifyRefreshToken}=require("./token.service")
+const {createVerificationToken,getUserIdByVerificationToken,deleteVerificationToken} = require("./verification.service");
 const {
   findUserByEmail,
   createUser,
-  findUserById
+  findUserById,
+  verifyUserEmail
+
 } = require("../repositories/user.repository");
 
 const AppError = require("../errors/AppError");
@@ -29,7 +32,7 @@ const register = async ({ email, password }) => {
     email: normalizedEmail,
     passwordHash,
   });
-
+const verificationToken = await createVerificationToken(user.id);
   return {
     id: user.id,
     email: user.email,
@@ -37,6 +40,7 @@ const register = async ({ email, password }) => {
     status: user.status,
     emailVerifiedAt: user.email_verified_at,
     createdAt: user.created_at,
+    verificationToken
   };
 };
 async function login({email,password,ip,userAgent}) {
@@ -160,9 +164,47 @@ async function logout (sessionId) {
 
   await deleteSession(sessionId);
 };
+async function verifyEmail(token){
+  if (!token) {
+    throw new AppError(
+      "Verification token is required",
+      400,
+      "VERIFICATION_TOKEN_REQUIRED"
+    );
+  }
+
+  const userId = await getUserIdByVerificationToken(token);
+
+  if (!userId) {
+    throw new AppError(
+      "Invalid or expired verification token",
+      400,
+      "INVALID_VERIFICATION_TOKEN"
+    );
+  }
+
+  const user = await verifyUserEmail(userId);
+
+  if (!user) {
+    throw new AppError(
+      "Email is already verified or user does not exist",
+      400,
+      "EMAIL_ALREADY_VERIFIED"
+    );
+  }
+
+  await deleteVerificationToken(token);
+
+  return {
+    id: user.id,
+    email: user.email,
+    emailVerifiedAt: user.email_verified_at,
+  };
+};
 module.exports = {
   register,
   login,
   refreshAccessToken,
-  logout
+  logout,
+  verifyEmail
 };

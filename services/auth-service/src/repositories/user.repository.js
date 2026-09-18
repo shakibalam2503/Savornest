@@ -69,9 +69,31 @@ const findUserById = async (userId) => {
 
   return result.rows[0] || null;
 };
+const verifyUserEmail = async (userId) => {
+  const query = `
+    UPDATE users
+    SET
+      email_verified_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+      AND email_verified_at IS NULL
+    RETURNING
+      id,
+      email,
+      role,
+      status,
+      email_verified_at,
+      created_at,
+      updated_at
+  `;
 
+  const result = await pool.query(query, [userId]);
+
+  return result.rows[0] || null;
+};
 module.exports = {
   findUserByEmail,
   createUser,
-  findUserById
+  findUserById,
+  verifyUserEmail
 };
