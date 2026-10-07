@@ -56,6 +56,13 @@ async function login({email,password,ip,userAgent}) {
     throw new AppError("Invalid email or password",401,"INVALID_CREDENTIALS")
   }
   const retrivedPasswordHash = user.password_hash;
+  if (!retrivedPasswordHash) {
+  throw new AppError(
+    "Invalid email or password",
+    401,
+    "INVALID_CREDENTIALS"
+  );
+}
   const isMatch = await bcrypt.compare(password,retrivedPasswordHash);
   if (!isMatch) {
     throw new AppError("Invalid email or password",401,"INVALID_CREDENTIALS")
