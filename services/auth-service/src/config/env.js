@@ -12,5 +12,10 @@ const config = {
     accessExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
     refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
   },
+  google: {
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: process.env.GOOGLE_REDIRECT_URI,
+  },
 };
 module.exports=config

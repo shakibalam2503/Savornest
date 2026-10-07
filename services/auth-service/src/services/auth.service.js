@@ -12,6 +12,9 @@ const {
   updateUserPassword
 
 } = require("../repositories/user.repository");
+const {
+  findOrCreateUser,
+} = require("../repositories/google-oauth.repository");
 
 const AppError = require("../errors/AppError");
 
@@ -75,6 +78,59 @@ async function login({email,password,ip,userAgent}) {
     refreshToken
   
 }
+}
+async function loginWithGoogle({ googleId, email, ip, userAgent }) {
+  const result = await findOrCreateUser(googleId, email);
+
+  if (result.requiresLinking) {
+    throw new AppError(
+      "An account with this email already exists. Please sign in using your existing login method.",
+      409,
+      "GOOGLE_ACCOUNT_LINKING_REQUIRED"
+    );
+  }
+
+  const user = result.user;
+
+  if (user.status !== "ACTIVE") {
+    throw new AppError(
+      "User account is not active",
+      403,
+      "ACCOUNT_NOT_ACTIVE"
+    );
+  }
+
+  const sessionId = randomUUID();
+
+  const accessToken = generateAccessToken({
+    userId: user.id,
+    role: user.role,
+    sessionId,
+  });
+
+  const refreshToken = generateRefreshToken({
+    userId: user.id,
+    sessionId,
+  });
+
+  await createSession({
+    sessionId,
+    userId: user.id,
+    ip,
+    userAgent,
+  });
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      emailVerifiedAt: user.email_verified_at,
+    },
+    accessToken,
+    refreshToken,
+  };
 }
 async function refreshAccessToken(refreshToken) {
   if (!refreshToken) {
@@ -286,6 +342,7 @@ const resetPassword = async (token, newPassword) => {
 module.exports = {
   register,
   login,
+  loginWithGoogle,
   refreshAccessToken,
   logout,
   verifyEmail,

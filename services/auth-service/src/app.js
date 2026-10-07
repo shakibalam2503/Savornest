@@ -11,6 +11,7 @@ const errorHandler = require("./middlewares/errorHandler");
 
 const healthRoutes = require("./routes/health.route");
 const authRoutes = require("./routes/auth.routes");
+const googleOAuthRoutes = require("./routes/google-oauth.routes");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use(pinoHttp({logger,}));
 
 app.use(healthRoutes)
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/google", googleOAuthRoutes);
 
 app.use(notFound); // 404 handler
 app.use(errorHandler); // Global error handler

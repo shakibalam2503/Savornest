@@ -3,14 +3,14 @@ const config = require("./src/config/env");
 const logger = require("./src/config/logger");
 const { connectDatabase } = require("./src/config/database");
 const {checkRedis} = require("./src/config/redis")
-
 const startServer = async () => {
   try {
     await connectDatabase();
     await checkRedis();
-    logger.info("Redis Connected Successfully")
 
-    const server = app.listen(config.port, () => {
+    logger.info("Redis Connected Successfully");
+
+    app.listen(config.port, "localhost", () => {
       logger.info(
         {
           port: config.port,
@@ -20,7 +20,6 @@ const startServer = async () => {
       );
     });
 
-    return server;
   } catch (error) {
     logger.fatal(
       {
