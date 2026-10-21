@@ -7,6 +7,7 @@ const pinoHttp = require("pino-http");
 const logger = require("../src/config/logger")
 const notFound = require("./middlewares/notFound");
 const errorHandler = require("./middlewares/errorHandler");
+const requestId = require("./middlewares/requestId");
 
 
 const healthRoutes = require("./routes/health.route");
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser()); // Cookies
 
+app.use(requestId);
 
 // HTTP request logging
 app.use(pinoHttp({logger,}));
