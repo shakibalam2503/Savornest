@@ -2,12 +2,9 @@ const express = require("express");
 const http = require("http");
 const request = require("supertest");
 
-jest.mock("../src/config/env", () => ({
-  nodeEnv: "test",
-  port: 8000,
-  authServiceUrl: "http://localhost:5001",
-  frontendUrl: "http://localhost:3000",
-}));
+jest.mock("../src/middlewares/rate-limiter", () =>
+  (req, res, next) => next()
+);
 
 const app = require("../src/app");
 

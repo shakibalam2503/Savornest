@@ -1,15 +1,16 @@
+const config = require("./config/env");
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const pino = require("pino");
 const pinoHttp = require("pino-http");
-const { rateLimit } = require("express-rate-limit");
+const rateLimiter = require("./middlewares/rate-limiter");
 
-const config = require("./config/env");
 const authProxy = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
 const notFound = require("./middlewares/not-found");
 const errorHandler = require("./middlewares/error-handler");
+const requestId = require("./middlewares/request-id");
 
 const app = express();
 
@@ -27,17 +28,12 @@ app.use(
     credentials: true,
   })
 );
-
+app.use(requestId);
 app.use(pinoHttp({ logger }));
 
-const gatewayLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 300,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-});
+// Rate limiter
 
-app.use("/api", gatewayLimiter);
+app.use("/api", rateLimiter);
 
 // Health endpoint: GET /health
 app.use("/health", healthRoutes);

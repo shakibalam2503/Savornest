@@ -1,5 +1,11 @@
 function errorHandler(err, req, res, next) {
-  console.error("API Gateway error:", err.message);
+  req.log?.error(
+    {
+      err,
+      requestId: req.id,
+    },
+    "API Gateway error"
+  );
 
   if (res.headersSent) {
     return next(err);
