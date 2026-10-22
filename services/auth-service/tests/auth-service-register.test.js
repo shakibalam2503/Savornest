@@ -2,9 +2,23 @@
 jest.mock("../src/repositories/user.repository", () => ({
   findUserByEmail: jest.fn(),
   createUser: jest.fn(),
+  createUserWithClient: jest.fn(),
   findUserById: jest.fn(),
   verifyUserEmail: jest.fn(),
   updateUserPassword: jest.fn(),
+}));
+
+jest.mock("../src/repositories/outbox.repository", () => ({
+  createOutboxEvent: jest.fn(),
+  getPendingOutboxEvents: jest.fn(),
+  markOutboxEventPublished: jest.fn(),
+  recordOutboxPublishFailure: jest.fn(),
+}));
+
+jest.mock("../src/config/database", () => ({
+  pool: {
+    connect: jest.fn(),
+  },
 }));
 
 jest.mock("../src/services/verification.service", () => ({
@@ -14,10 +28,17 @@ jest.mock("../src/services/verification.service", () => ({
 }));
 
 const bcrypt = require("bcryptjs");
+
 const {
   findUserByEmail,
-  createUser,
+  createUserWithClient,
 } = require("../src/repositories/user.repository");
+
+const {
+  createOutboxEvent,
+} = require("../src/repositories/outbox.repository");
+
+const { pool } = require("../src/config/database");
 
 const {
   createVerificationToken,
@@ -26,24 +47,37 @@ const {
 const authService = require("../src/services/auth.service");
 
 describe("authService.register()", () => {
+  let client;
+  let user;
+
   beforeEach(() => {
     jest.clearAllMocks();
-  });
 
-  test("normalizes email, hashes password, creates user, and generates verification token", async () => {
-    findUserByEmail.mockResolvedValue(null);
+    client = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+      release: jest.fn(),
+    };
 
-    createUser.mockResolvedValue({
+    pool.connect.mockResolvedValue(client);
+
+    user = {
       id: "user-123",
       email: "farmer@example.com",
       role: "CUSTOMER",
       status: "ACTIVE",
       email_verified_at: null,
       created_at: new Date("2026-01-01T00:00:00.000Z"),
-    });
+    };
 
-    createVerificationToken.mockResolvedValue("verification-token-123");
+    findUserByEmail.mockResolvedValue(null);
+    createUserWithClient.mockResolvedValue(user);
+    createOutboxEvent.mockResolvedValue({});
+    createVerificationToken.mockResolvedValue(
+      "verification-token-123"
+    );
+  });
 
+  test("normalizes email, hashes password, creates user and outbox event, then generates verification token", async () => {
     const result = await authService.register({
       email: "  Farmer@Example.COM  ",
       password: "StrongPass123",
@@ -53,12 +87,21 @@ describe("authService.register()", () => {
       "farmer@example.com"
     );
 
-    expect(createUser).toHaveBeenCalledTimes(1);
+    expect(pool.connect).toHaveBeenCalledTimes(1);
 
-    const createUserArgument = createUser.mock.calls[0][0];
+    expect(client.query).toHaveBeenCalledWith("BEGIN");
 
+    expect(createUserWithClient).toHaveBeenCalledTimes(1);
+
+    const [transactionClient, createUserArgument] =
+      createUserWithClient.mock.calls[0];
+
+    expect(transactionClient).toBe(client);
     expect(createUserArgument.email).toBe("farmer@example.com");
-    expect(createUserArgument.passwordHash).not.toBe("StrongPass123");
+    expect(createUserArgument.passwordHash).not.toBe(
+      "StrongPass123"
+    );
+
     expect(
       await bcrypt.compare(
         "StrongPass123",
@@ -66,7 +109,34 @@ describe("authService.register()", () => {
       )
     ).toBe(true);
 
-    expect(createVerificationToken).toHaveBeenCalledWith("user-123");
+    expect(createOutboxEvent).toHaveBeenCalledTimes(1);
+
+    const [outboxClient, event] = createOutboxEvent.mock.calls[0];
+
+    expect(outboxClient).toBe(client);
+    expect(event).toMatchObject({
+      aggregateType: "USER",
+      aggregateId: "user-123",
+      eventType: "UserRegistered",
+      payload: {
+        userId: "user-123",
+        email: "farmer@example.com",
+        role: "CUSTOMER",
+        fullName: null,
+        phone: null,
+        avatarUrl: null,
+      },
+    });
+
+    // The database row and event payload should share the same ID.
+    expect(event.id).toBe(event.payload.eventId);
+
+    expect(client.query).toHaveBeenCalledWith("COMMIT");
+    expect(client.release).toHaveBeenCalledTimes(1);
+
+    expect(createVerificationToken).toHaveBeenCalledWith(
+      "user-123"
+    );
 
     expect(result).toEqual({
       id: "user-123",
@@ -79,7 +149,7 @@ describe("authService.register()", () => {
     });
   });
 
-  test("rejects an existing email without creating a user", async () => {
+  test("rejects an existing email without starting a transaction", async () => {
     findUserByEmail.mockResolvedValue({
       id: "existing-user",
       email: "farmer@example.com",
@@ -95,13 +165,16 @@ describe("authService.register()", () => {
       code: "EMAIL_ALREADY_EXISTS",
     });
 
-    expect(createUser).not.toHaveBeenCalled();
+    expect(pool.connect).not.toHaveBeenCalled();
+    expect(createUserWithClient).not.toHaveBeenCalled();
+    expect(createOutboxEvent).not.toHaveBeenCalled();
     expect(createVerificationToken).not.toHaveBeenCalled();
   });
 
-  test("does not create a verification token if user creation fails", async () => {
-    findUserByEmail.mockResolvedValue(null);
-    createUser.mockRejectedValue(new Error("Database unavailable"));
+  test("rolls back the transaction if user creation fails", async () => {
+    createUserWithClient.mockRejectedValue(
+      new Error("Database unavailable")
+    );
 
     await expect(
       authService.register({
@@ -110,6 +183,29 @@ describe("authService.register()", () => {
       })
     ).rejects.toThrow("Database unavailable");
 
+    expect(client.query).toHaveBeenCalledWith("BEGIN");
+    expect(client.query).toHaveBeenCalledWith("ROLLBACK");
+
+    expect(createOutboxEvent).not.toHaveBeenCalled();
     expect(createVerificationToken).not.toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  test("rolls back if outbox event creation fails", async () => {
+    createOutboxEvent.mockRejectedValue(
+      new Error("Outbox insert failed")
+    );
+
+    await expect(
+      authService.register({
+        email: "farmer@example.com",
+        password: "StrongPass123",
+      })
+    ).rejects.toThrow("Outbox insert failed");
+
+    expect(createUserWithClient).toHaveBeenCalledTimes(1);
+    expect(client.query).toHaveBeenCalledWith("ROLLBACK");
+    expect(createVerificationToken).not.toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });

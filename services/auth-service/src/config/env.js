@@ -17,5 +17,7 @@ const config = {
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   redirectUri: process.env.GOOGLE_REDIRECT_URI,
   },
+  internalServiceKey: process.env.INTERNAL_SERVICE_KEY,
+  rabbitmqUrl: process.env.RABBITMQ_URL,
 };
 module.exports=config
