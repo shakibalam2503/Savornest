@@ -33,7 +33,7 @@ app.use(requestId);
 app.use(pinoHttp({logger,}));
 
 
-app.use(healthRoutes)
+app.use("/api/auth",healthRoutes)
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/google", googleOAuthRoutes);
 

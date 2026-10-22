@@ -157,6 +157,22 @@ const resetPassword = async (req, res, next) => {
     next(error);
   }
 };
+async function validateAccessToken(req, res, next) {
+  try {
+    const token = req.get("authorization")?.startsWith("Bearer ")
+      ? req.get("authorization").slice("Bearer ".length)
+      : null;
+
+    const identity = await authService.validateAccessToken(token);
+
+    return res.status(200).json({
+      success: true,
+      data: identity,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports={
     register,
     login,
@@ -165,5 +181,6 @@ module.exports={
     refresh,
     verifyEmail,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    validateAccessToken
 }
