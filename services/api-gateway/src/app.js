@@ -7,6 +7,7 @@ const pinoHttp = require("pino-http");
 const rateLimiter = require("./middlewares/rate-limiter");
 
 const authProxy = require("./routes/auth.routes");
+const userProxy = require("./routes/user.routes")
 const healthRoutes = require("./routes/health.routes");
 const notFound = require("./middlewares/not-found");
 const errorHandler = require("./middlewares/error-handler");
@@ -40,6 +41,9 @@ app.use("/health", healthRoutes);
 
 // Auth Service proxy
 app.use(authProxy);
+
+// User Service proxy
+app.use(userProxy)
 
 // Handle unmatched requests
 app.use(notFound);
