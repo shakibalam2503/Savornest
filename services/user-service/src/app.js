@@ -2,9 +2,14 @@ const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
 const pinoHttp = require("pino-http");
-
 const logger = require("./config/logger");
+
+
 const healthRoutes = require("./routes/health.routes");
+const userProfileRoutes = require("./routes/user-profile.routes");
+
+
+
 const notFound = require("./middlewares/not-found");
 const errorHandler = require("./middlewares/error-handler");
 const requestId = require("./middlewares/request-id");
@@ -20,6 +25,7 @@ app.use(pinoHttp({ logger }));
 app.use(express.json());
 
 app.use("/", healthRoutes);
+app.use("/api/users", userProfileRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
