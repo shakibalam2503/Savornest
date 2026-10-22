@@ -114,10 +114,40 @@ const updateUserPassword = async (userId, passwordHash) => {
 
   return result.rows[0] || null;
 };
+
+const createUserWithClient = async (
+  client,
+  { email, passwordHash, role = "CUSTOMER" }
+) => {
+  const query = `
+    INSERT INTO users (
+      email,
+      password_hash,
+      role
+    )
+    VALUES ($1, $2, $3)
+    RETURNING
+      id,
+      email,
+      password_hash,
+      role,
+      status,
+      email_verified_at,
+      created_at,
+      updated_at
+  `;
+
+  const values = [email, passwordHash, role];
+  const result = await client.query(query, values);
+
+  return result.rows[0];
+};
+
 module.exports = {
   findUserByEmail,
   createUser,
   findUserById,
   verifyUserEmail,
-  updateUserPassword
+  updateUserPassword,
+  createUserWithClient
 };
