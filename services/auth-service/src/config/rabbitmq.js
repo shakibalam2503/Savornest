@@ -6,12 +6,23 @@ const logger = require("./logger");
 let connection;
 let channel;
 
+const EXCHANGE_NAME = "savornest.events";
+
 async function connectRabbitMQ() {
   if (channel) {
     return channel;
   }
 
+  if (!config.rabbitmqUrl) {
+    throw new Error("RABBITMQ_URL is not configured");
+  }
+
   connection = await amqp.connect(config.rabbitmqUrl);
+  channel = await connection.createConfirmChannel();
+
+  await channel.assertExchange(EXCHANGE_NAME, "topic", {
+    durable: true,
+  });
 
   connection.on("error", (error) => {
     logger.error({ err: error }, "RabbitMQ connection error");
@@ -23,18 +34,12 @@ async function connectRabbitMQ() {
     channel = null;
   });
 
-  channel = await connection.createConfirmChannel();
-
   logger.info("RabbitMQ connected successfully");
 
   return channel;
 }
 
 function getRabbitMQChannel() {
-  if (!channel) {
-    throw new Error("RabbitMQ channel is not initialized");
-  }
-
   return channel;
 }
 
@@ -58,4 +63,5 @@ module.exports = {
   connectRabbitMQ,
   getRabbitMQChannel,
   closeRabbitMQ,
+  EXCHANGE_NAME,
 };
