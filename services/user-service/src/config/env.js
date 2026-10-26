@@ -9,6 +9,7 @@ const env = {
   databaseUrl: process.env.DATABASE_URL,
   authServiceUrl: process.env.AUTH_SERVICE_URL,
   internalServiceKey: process.env.INTERNAL_SERVICE_KEY,
+  rabbitmqUrl: process.env.RABBITMQ_URL,
 };
 
 if (!env.databaseUrl) {
