@@ -1,17 +1,34 @@
 const { pool } = require("../config/database");
 
-async function createProfile({ userId, fullName = null, phone = null, avatarUrl = null }) {
+
+async function createProfile(
+  { userId, fullName = null, phone = null, avatarUrl = null },
+  client = pool
+) {
   const query = `
     INSERT INTO user_profiles (user_id, full_name, phone, avatar_url)
     VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO NOTHING
     RETURNING user_id, full_name, phone, avatar_url, status, created_at, updated_at
   `;
 
   const values = [userId, fullName, phone, avatarUrl];
-  const { rows } = await pool.query(query, values);
+  const { rows } = await client.query(query, values);
 
-  return rows[0];
+  if (rows[0]) {
+    return rows[0];
+  }
+
+  const existingProfileQuery = `
+    SELECT user_id, full_name, phone, avatar_url, status, created_at, updated_at
+    FROM user_profiles
+    WHERE user_id = $1
+  `;
+
+  const result = await client.query(existingProfileQuery, [userId]);
+  return result.rows[0] || null;
 }
+
 
 async function findProfileByUserId(userId) {
   const query = `
