@@ -4,6 +4,7 @@ const app = require("./src/app");
 const { pool, connectDatabase } = require("./src/config/database");
 const {
   startUserRegisteredConsumer,
+  stopUserRegisteredConsumer,
 } = require("./src/consumers/user-registered.consumer");
 const { closeRabbitMQ } = require("./src/config/rabbitmq");
 const logger = require("./src/config/logger");
@@ -54,7 +55,7 @@ async function shutdown(signal) {
         });
       });
     }
-
+    await stopUserRegisteredConsumer();
     await closeRabbitMQ();
     await pool.end();
 
