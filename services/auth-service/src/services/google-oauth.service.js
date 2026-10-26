@@ -122,6 +122,7 @@ async function exchangeGoogleAuthorizationCode(code, state) {
   return {
     googleId: payload.sub,
     email: payload.email.toLowerCase(),
+    name: payload.name || null,
     emailVerified: true,
     name: payload.name || null,
     picture: payload.picture || null,

@@ -136,8 +136,8 @@ async function login({email,password,ip,userAgent}) {
   
 }
 }
-async function loginWithGoogle({ googleId, email, ip, userAgent }) {
-  const result = await findOrCreateUser(googleId, email);
+async function loginWithGoogle({ googleId, email, name, ip, userAgent }) {
+  const result = await findOrCreateUser(googleId, email, name);
 
   if (result.requiresLinking) {
     throw new AppError(

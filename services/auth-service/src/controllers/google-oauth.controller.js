@@ -46,6 +46,7 @@ async function googleCallback(req, res, next) {
     const result = await authService.loginWithGoogle({
       googleId: googleUser.googleId,
       email: googleUser.email,
+      name: googleUser.name,
       ip: req.ip,
       userAgent: req.get("user-agent"),
     });
